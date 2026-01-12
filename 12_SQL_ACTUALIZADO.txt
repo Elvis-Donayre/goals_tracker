@@ -1,0 +1,507 @@
+# 📊 SQL ACTUALIZADO - METAS COMPLETAMENTE PERSONALIZADAS
+
+**Schema SQL revisado - Sin metas predefinidas, usuario crea las suyas**
+
+---
+
+## 🔄 CAMBIOS REALIZADOS
+
+```
+❌ REMOVIDO:
+├─ Tabla de metas predefinidas
+├─ Referencia a metas predefinidas en habits
+└─ Inserción de metas hardcodeadas
+
+✅ AGREGADO:
+├─ Tabla user_categories (para categorías personalizadas)
+├─ Libertad total en nombre de hábitos
+└─ Categorías como OPCIONAL
+```
+
+---
+
+## 💻 SQL COMPLETO ACTUALIZADO
+
+Copia TODO este código y pégalo en Supabase SQL Editor:
+
+```sql
+-- ============================================================================
+-- HABIT TRACKER - SCHEMA SQL COMPLETO (VERSIÓN ACTUALIZADA)
+-- ============================================================================
+-- Base de datos: PostgreSQL 14+
+-- Hosting: Supabase
+--
+-- CAMBIO PRINCIPAL: Metas completamente personalizadas por usuario
+-- NO hay metas predefinidas. Usuario crea EXACTAMENTE lo que necesita.
+-- ============================================================================
+
+-- TABLA 1: USUARIOS
+-- Almacena información básica del usuario
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  full_name VARCHAR(150),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- TABLA 2: CATEGORÍAS (PREDEFINIDAS - OPCIONALES)
+-- Estas son SUGERENCIAS/INSPIRACIÓN pero completamente opcionales
+-- Los usuarios pueden o no usarlas
+CREATE TABLE categories (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(50) UNIQUE NOT NULL,
+  description TEXT,
+  color VARCHAR(7) DEFAULT '#3B82F6',
+  icon VARCHAR(50),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Insertar categorías sugeridas (NO obligatorias)
+INSERT INTO categories (name, description, color, icon) VALUES
+  ('Salud', 'Ejercicio, nutrición, sueño, bienestar físico', '#EF4444', '❤️'),
+  ('Aprendizaje', 'Idiomas, cursos, lectura, educación', '#3B82F6', '📚'),
+  ('Productividad', 'Trabajo, proyectos, coding, enfoque', '#10B981', '⚡'),
+  ('Desarrollo Personal', 'Meditación, reflexión, crecimiento, mindfulness', '#8B5CF6', '🌱'),
+  ('Relaciones', 'Familia, amigos, networking, comunidad', '#F59E0B', '👥'),
+  ('Finanzas', 'Inversión, ahorro, educación financiera', '#EC4899', '💰')
+ON CONFLICT (name) DO NOTHING;
+
+-- TABLA 2B: CATEGORÍAS PERSONALIZADAS DEL USUARIO
+-- Permite que cada usuario cree SUS PROPIAS categorías
+CREATE TABLE user_categories (
+  id SERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(100) NOT NULL,
+  color VARCHAR(7) DEFAULT '#3B82F6',
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, name)
+);
+
+-- TABLA 3: HÁBITOS/METAS (COMPLETAMENTE PERSONALIZADOS)
+-- CAMBIO: El usuario escribe el nombre exacto que quiere
+-- Categoría es OPCIONAL (puede ser NULL)
+CREATE TABLE habits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,  -- ← Usuario lo escribe exactamente como quiere
+  description TEXT,             -- ← Descripción opcional
+  category_id INT REFERENCES categories(id),  -- ← OPCIONAL
+  target_minutes_per_week INT,  -- ← Mínimo deseado por semana
+  max_minutes_per_week INT,     -- ← Máximo para evitar burnout
+  total_hours_goal INT,         -- ← Objetivo total en horas
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, name)  -- No duplicados para el mismo usuario
+);
+
+-- TABLA 4: ACTIVIDADES (Lo que el usuario REALMENTE hace)
+CREATE TABLE activities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  category_id INT REFERENCES categories(id),
+  description TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, name)
+);
+
+-- TABLA 5: RELACIÓN HÁBITOS-ACTIVIDADES (EL CRUCE INTELIGENTE)
+-- Una actividad puede beneficiar múltiples hábitos con pesos diferentes
+CREATE TABLE habit_activities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  habit_id UUID NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+  activity_id UUID NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+  weight DECIMAL(3, 2) DEFAULT 1.0,  -- 0.0 a 1.0 (porcentaje de contribución)
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(habit_id, activity_id)
+);
+
+-- TABLA 6: SESIONES (Registros de tiempo)
+CREATE TABLE sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  activity_id UUID NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+  duration_minutes INT NOT NULL,
+  session_date DATE NOT NULL,
+  start_time TIME,
+  mood INT CHECK (mood >= 1 AND mood <= 5),  -- 1-5
+  productivity_level INT CHECK (productivity_level >= 1 AND productivity_level <= 5),  -- 1-5
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- TABLA 7: MÉTRICAS DE HÁBITOS (Precalculadas)
+CREATE TABLE habit_metrics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  habit_id UUID NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+  total_minutes_invested INT DEFAULT 0,
+  total_sessions INT DEFAULT 0,
+  current_streak INT DEFAULT 0,
+  longest_streak INT DEFAULT 0,
+  completion_percentage DECIMAL(5, 2) DEFAULT 0.0,
+  estimated_completion_date DATE,
+  last_updated TIMESTAMP DEFAULT NOW()
+);
+
+-- TABLA 8: LOG DE CAMBIOS (Auditoría)
+CREATE TABLE habit_changes_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  habit_id UUID NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+  change_type VARCHAR(50),  -- 'created', 'updated', 'deleted', 'paused'
+  old_values JSONB,
+  new_values JSONB,
+  changed_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================================================
+-- ÍNDICES OPTIMIZADOS
+-- ============================================================================
+
+CREATE INDEX idx_habits_user_id ON habits(user_id);
+CREATE INDEX idx_habits_category_id ON habits(category_id);
+CREATE INDEX idx_activities_user_id ON activities(user_id);
+CREATE INDEX idx_habit_activities_habit_id ON habit_activities(habit_id);
+CREATE INDEX idx_habit_activities_activity_id ON habit_activities(activity_id);
+CREATE INDEX idx_sessions_activity_id ON sessions(activity_id);
+CREATE INDEX idx_sessions_date ON sessions(session_date);
+CREATE INDEX idx_habit_metrics_habit_id ON habit_metrics(habit_id);
+CREATE INDEX idx_user_categories_user_id ON user_categories(user_id);
+
+-- ============================================================================
+-- VISTAS ÚTILES
+-- ============================================================================
+
+-- VISTA 1: Progreso de hábitos con detalles
+CREATE VIEW habit_progress AS
+SELECT
+  h.id,
+  h.user_id,
+  h.name,
+  h.target_minutes_per_week,
+  h.max_minutes_per_week,
+  h.total_hours_goal,
+  hm.total_minutes_invested,
+  hm.total_sessions,
+  hm.completion_percentage,
+  CASE 
+    WHEN h.total_hours_goal > 0 THEN 
+      ROUND((hm.total_minutes_invested::DECIMAL / (h.total_hours_goal * 60)) * 100, 2)
+    ELSE 0
+  END AS overall_completion,
+  hm.estimated_completion_date,
+  h.is_active,
+  h.created_at
+FROM habits h
+LEFT JOIN habit_metrics hm ON h.id = hm.habit_id
+ORDER BY h.created_at DESC;
+
+-- VISTA 2: Distribución de actividades entre hábitos
+CREATE VIEW activity_habit_contribution AS
+SELECT
+  s.id as session_id,
+  s.activity_id,
+  a.name as activity_name,
+  h.id as habit_id,
+  h.name as habit_name,
+  s.duration_minutes,
+  ROUND(s.duration_minutes * ha.weight) as minutes_to_habit,
+  ha.weight,
+  s.session_date
+FROM sessions s
+JOIN activities a ON s.activity_id = a.id
+JOIN habit_activities ha ON a.id = ha.activity_id
+JOIN habits h ON ha.habit_id = h.id
+ORDER BY s.session_date DESC;
+
+-- VISTA 3: Matriz de eficiencia (Qué actividades benefician múltiples hábitos)
+CREATE VIEW activity_habit_matrix AS
+SELECT
+  a.id,
+  a.user_id,
+  a.name as activity_name,
+  COUNT(DISTINCT ha.habit_id) as number_of_habits,
+  STRING_AGG(DISTINCT h.name, ', ') as benefited_habits,
+  COUNT(DISTINCT s.id) as total_sessions,
+  SUM(s.duration_minutes) as total_minutes
+FROM activities a
+LEFT JOIN habit_activities ha ON a.id = ha.activity_id
+LEFT JOIN habits h ON ha.habit_id = h.id
+LEFT JOIN sessions s ON a.id = s.activity_id
+GROUP BY a.id, a.user_id, a.name
+ORDER BY number_of_habits DESC, total_sessions DESC;
+
+-- VISTA 4: Resumen semanal
+CREATE VIEW weekly_summary AS
+SELECT
+  h.user_id,
+  h.id as habit_id,
+  h.name,
+  h.target_minutes_per_week,
+  COALESCE(SUM(ROUND(s.duration_minutes * ha.weight)), 0) as minutes_this_week,
+  CASE 
+    WHEN h.target_minutes_per_week > 0 THEN
+      ROUND((COALESCE(SUM(ROUND(s.duration_minutes * ha.weight)), 0)::DECIMAL / h.target_minutes_per_week) * 100, 2)
+    ELSE 0
+  END as completion_percentage,
+  CASE 
+    WHEN COALESCE(SUM(ROUND(s.duration_minutes * ha.weight)), 0) >= h.target_minutes_per_week THEN 'Completado'
+    WHEN COALESCE(SUM(ROUND(s.duration_minutes * ha.weight)), 0) >= (h.target_minutes_per_week * 0.5) THEN 'En camino'
+    ELSE 'Rezagado'
+  END as status
+FROM habits h
+LEFT JOIN habit_activities ha ON h.id = ha.habit_id
+LEFT JOIN activities a ON ha.activity_id = a.id
+LEFT JOIN sessions s ON a.id = s.activity_id 
+  AND s.session_date >= CURRENT_DATE - INTERVAL '7 days'
+WHERE h.is_active = true
+GROUP BY h.user_id, h.id, h.name, h.target_minutes_per_week
+ORDER BY h.user_id, h.name;
+
+-- ============================================================================
+-- FUNCIONES PL/pgSQL AUTOMÁTICAS
+-- ============================================================================
+
+-- FUNCIÓN 1: Registrar sesión y distribuir entre hábitos (CRÍTICA)
+CREATE OR REPLACE FUNCTION register_session()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Distribuir tiempo de la sesión entre todos los hábitos vinculados
+  -- según los pesos configurados
+  
+  UPDATE habit_metrics
+  SET 
+    total_minutes_invested = total_minutes_invested + ROUND(NEW.duration_minutes * ha.weight),
+    total_sessions = total_sessions + 1,
+    last_updated = NOW()
+  FROM habit_activities ha
+  WHERE ha.activity_id = NEW.activity_id
+  AND habit_metrics.habit_id = ha.habit_id;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_register_session
+AFTER INSERT ON sessions
+FOR EACH ROW
+EXECUTE FUNCTION register_session();
+
+-- FUNCIÓN 2: Vincular actividad a hábito con validación
+CREATE OR REPLACE FUNCTION link_activity_to_habit(
+  p_habit_id UUID,
+  p_activity_id UUID,
+  p_weight DECIMAL DEFAULT 1.0
+)
+RETURNS void AS $$
+BEGIN
+  -- Validar que peso esté entre 0 y 1
+  IF p_weight < 0 OR p_weight > 1 THEN
+    RAISE EXCEPTION 'El peso debe estar entre 0 y 1';
+  END IF;
+  
+  -- Validar que habito y actividad existan y pertenezcan al mismo usuario
+  IF NOT EXISTS (
+    SELECT 1 FROM habits WHERE id = p_habit_id
+  ) THEN
+    RAISE EXCEPTION 'Hábito no existe';
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM activities WHERE id = p_activity_id
+  ) THEN
+    RAISE EXCEPTION 'Actividad no existe';
+  END IF;
+  
+  -- Insertar o actualizar la relación
+  INSERT INTO habit_activities (habit_id, activity_id, weight)
+  VALUES (p_habit_id, p_activity_id, p_weight)
+  ON CONFLICT (habit_id, activity_id)
+  DO UPDATE SET weight = p_weight;
+END;
+$$ LANGUAGE plpgsql;
+
+-- FUNCIÓN 3: Actualizar métricas de hábito
+CREATE OR REPLACE FUNCTION update_habit_metrics(p_habit_id UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE habit_metrics
+  SET 
+    completion_percentage = CASE 
+      WHEN (SELECT total_hours_goal FROM habits WHERE id = p_habit_id) > 0 THEN
+        ROUND((total_minutes_invested::DECIMAL / ((SELECT total_hours_goal FROM habits WHERE id = p_habit_id) * 60)) * 100, 2)
+      ELSE 0
+    END,
+    estimated_completion_date = CASE 
+      WHEN total_sessions > 0 THEN
+        CURRENT_DATE + INTERVAL '1 day' * ((SELECT total_hours_goal FROM habits WHERE id = p_habit_id) * 60 - total_minutes_invested) / (total_minutes_invested::DECIMAL / total_sessions)
+      ELSE NULL
+    END,
+    last_updated = NOW()
+  WHERE habit_id = p_habit_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- DATOS DE PRUEBA (VACÍO - Usuario crea sus propios hábitos)
+-- ============================================================================
+
+-- NOTA: NO insertamos metas predefinidas.
+-- El usuario crea EXACTAMENTE lo que necesita cuando se logueea.
+
+-- Si quieres un usuario de prueba:
+-- INSERT INTO users (email, full_name) 
+-- VALUES ('test@example.com', 'Usuario Prueba')
+-- ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- QUERIES DE VERIFICACIÓN
+-- ============================================================================
+
+-- Verificar que todas las tablas existan:
+-- SELECT table_name FROM information_schema.tables 
+-- WHERE table_schema = 'public' ORDER BY table_name;
+
+-- Verificar categorías sugeridas:
+-- SELECT * FROM categories;
+
+-- Verificar que funciones existen:
+-- SELECT proname FROM pg_proc WHERE proname LIKE 'register%' OR proname LIKE 'link%' OR proname LIKE 'update%';
+```
+
+---
+
+## 📝 CAMBIOS PRINCIPALES
+
+### 1. Tabla habits
+
+**ANTES:**
+```sql
+CREATE TABLE habits (
+  id UUID PRIMARY KEY,
+  user_id UUID,
+  predefined_habit_id INT,  -- ❌ REFERENCIA A PREDEFINIDAS
+  target_minutes_per_week INT,
+  ...
+);
+```
+
+**AHORA:**
+```sql
+CREATE TABLE habits (
+  id UUID PRIMARY KEY,
+  user_id UUID,
+  name VARCHAR(255) NOT NULL,  -- ✅ USUARIO ESCRIBE LIBREMENTE
+  description TEXT,             -- ✅ OPCIONAL
+  category_id INT,              -- ✅ OPCIONAL (puede ser NULL)
+  target_minutes_per_week INT,
+  ...
+  UNIQUE(user_id, name)  -- No duplicados
+);
+```
+
+### 2. Nueva tabla: user_categories
+
+```sql
+CREATE TABLE user_categories (
+  id SERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id),
+  name VARCHAR(100) NOT NULL,
+  color VARCHAR(7),
+  created_at TIMESTAMP,
+  UNIQUE(user_id, name)
+);
+```
+
+Permite que usuarios creen sus propias categorías si lo desean.
+
+### 3. Categorías: Sugerencias NO obligatorias
+
+Las categorías predefinidas se insertan como **INSPIRACIÓN**:
+
+```sql
+INSERT INTO categories (name, description, color) VALUES
+  ('Salud', '...', '#EF4444'),
+  ('Aprendizaje', '...', '#3B82F6'),
+  ...
+```
+
+Pero un usuario puede:
+- Usarlas (category_id = 2)
+- No usarlas (category_id = NULL)
+- Crear sus propias (tabla user_categories)
+
+### 4. SIN metas predefinidas
+
+**ANTES:**
+```sql
+-- Había tabla predefined_habits con:
+-- - Aprender inglés
+-- - Dominar AWS
+-- - Hacer ejercicio
+-- - etc.
+```
+
+**AHORA:**
+```
+-- ❌ NO hay tabla predefined_habits
+-- ✅ Usuario crea exactamente lo que quiere
+```
+
+---
+
+## ✅ CÓMO USAR
+
+### Para copiar en Supabase:
+
+1. Abre: https://supabase.com → Tu proyecto → SQL Editor
+2. Copia TODO el código de `03_SCHEMA_SQL.md` (actualizado)
+3. Pégalo en el editor
+4. Presiona [▶ Run]
+5. ✅ Success
+
+### Para verificar:
+
+Ejecuta esta query en SQL Editor:
+
+```sql
+SELECT table_name 
+FROM information_schema.tables 
+WHERE table_schema = 'public'
+ORDER BY table_name;
+```
+
+Deberías ver:
+- activities
+- categories
+- habit_activities
+- habit_changes_log
+- habit_metrics
+- habits
+- sessions
+- user_categories ← NUEVA
+- users
+
+---
+
+## 🎯 RESUMEN
+
+```
+✅ Metas completamente personalizadas
+✅ Usuario escribe EXACTAMENTE lo que quiere
+✅ Categorías opcionales (sugerencias)
+✅ Tabla user_categories para categorías propias
+✅ Sin restricciones de opciones
+✅ Máxima flexibilidad
+```
+
+**Elvis tenía razón. Este diseño es MUCHO mejor. ✨**
+
+---
+
+**Status:** SQL actualizado  
+**Versión:** 2.0 (Personalización completa)  
+**Próximo:** Actualizar Streamlit (04_GUIA_STREAMLIT.md)
