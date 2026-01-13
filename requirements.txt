@@ -1,0 +1,23 @@
+# =============================================================================
+# DEPENDENCIAS DEL PROYECTO - HABIT TRACKER
+# =============================================================================
+
+# Streamlit - Framework web
+streamlit>=1.32.0
+
+# Supabase - Base de datos y autenticación
+supabase==2.3.4
+
+# Visualización de datos
+plotly==5.18.0
+pandas==2.2.0
+
+# Utilidades
+python-dotenv==1.0.0
+python-dateutil==2.8.2
+
+# Validación de datos
+pydantic==2.5.0
+
+# Para manejo de fechas
+pytz==2023.3
