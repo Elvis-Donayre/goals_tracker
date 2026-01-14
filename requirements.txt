@@ -6,18 +6,18 @@
 streamlit>=1.32.0
 
 # Supabase - Base de datos y autenticación
-supabase==2.3.4
+supabase>=2.3.4
 
 # Visualización de datos
-plotly==5.18.0
-pandas==2.2.0
+plotly>=5.18.0
+pandas>=2.2.0
 
 # Utilidades
-python-dotenv==1.0.0
-python-dateutil==2.8.2
+python-dotenv>=1.0.0
+python-dateutil>=2.8.2
 
 # Validación de datos
-pydantic==2.5.0
+pydantic>=2.10.0
 
 # Para manejo de fechas
-pytz==2023.3
+pytz>=2023.3
