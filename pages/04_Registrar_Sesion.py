@@ -199,7 +199,7 @@ with tab1:
         # Botón de envío
         submit = st.form_submit_button(
             "✅ Registrar Sesión",
-            use_container_width=True,
+            width='stretch',
             type="primary"
         )
 
@@ -291,11 +291,13 @@ with tab2:
 
         with col2:
             total_duration = sessions["duration_minutes"].sum()
-            st.metric("Tiempo Total", format_duration(int(total_duration)))
+            total_display = format_duration(int(total_duration)) if pd.notna(total_duration) and total_duration > 0 else "0m"
+            st.metric("Tiempo Total", total_display)
 
         with col3:
             avg_duration = sessions["duration_minutes"].mean()
-            st.metric("Promedio/Sesión", format_duration(int(avg_duration)))
+            avg_display = format_duration(int(avg_duration)) if pd.notna(avg_duration) and avg_duration > 0 else "0m"
+            st.metric("Promedio/Sesión", avg_display)
 
         with col4:
             if "mood" in sessions.columns and sessions["mood"].notna().any():
@@ -320,7 +322,7 @@ with tab2:
 
         # Formatear duración
         display_sessions["duration_formatted"] = display_sessions["duration_minutes"].apply(
-            lambda x: format_duration(int(x))
+            lambda x: format_duration(int(x)) if pd.notna(x) and x > 0 else "0m"
         )
 
         # Formatear mood
@@ -361,7 +363,7 @@ with tab2:
 
         st.dataframe(
             display_df,
-            use_container_width=True,
+            width='stretch',
             hide_index=True
         )
 

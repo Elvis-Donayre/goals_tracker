@@ -75,7 +75,8 @@ with tab1:
     with col2:
         if not progress.empty and "total_minutes_invested" in progress.columns:
             total_time = progress["total_minutes_invested"].sum()
-            st.metric("Tiempo Total Invertido", format_duration(int(total_time)))
+            time_display = format_duration(int(total_time)) if pd.notna(total_time) and total_time > 0 else "0m"
+            st.metric("Tiempo Total Invertido", time_display)
 
     with col3:
         if not progress.empty and "completion_percentage" in progress.columns:
@@ -136,7 +137,7 @@ with tab1:
             paper_bgcolor="rgba(0,0,0,0)"
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     st.markdown("---")
 
@@ -152,7 +153,7 @@ with tab1:
         ]].copy()
 
         display_df["total_minutes_invested"] = display_df["total_minutes_invested"].apply(
-            lambda x: format_duration(int(x))
+            lambda x: format_duration(int(x)) if pd.notna(x) and x > 0 else "0m"
         )
         display_df["total_hours_goal"] = display_df["total_hours_goal"].apply(
             lambda x: f"{x}h"
@@ -163,7 +164,7 @@ with tab1:
 
         display_df.columns = ["Hábito", "Tiempo Invertido", "Objetivo", "Completado"]
 
-        st.dataframe(display_df, use_container_width=True, hide_index=True)
+        st.dataframe(display_df, width='stretch', hide_index=True)
 
 # ============================================================================
 # TAB 2: RESUMEN SEMANAL
@@ -196,10 +197,9 @@ with tab2:
                     col_a, col_b, col_c = st.columns(3)
 
                     with col_a:
-                        st.metric(
-                            "Esta semana",
-                            format_duration(int(row.get("minutes_this_week", 0)))
-                        )
+                        mins_week = row.get("minutes_this_week", 0)
+                        week_display = format_duration(int(mins_week)) if pd.notna(mins_week) and mins_week > 0 else "0m"
+                        st.metric("Esta semana", week_display)
 
                     with col_b:
                         st.metric(
@@ -267,7 +267,7 @@ with tab3:
                 showlegend=True
             )
 
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
         st.markdown("---")
 
@@ -308,10 +308,9 @@ with tab4:
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
-            st.metric(
-                "Tiempo Invertido",
-                format_duration(int(habit_data["total_minutes_invested"]))
-            )
+            mins_invested = habit_data["total_minutes_invested"]
+            invested_display = format_duration(int(mins_invested)) if pd.notna(mins_invested) and mins_invested > 0 else "0m"
+            st.metric("Tiempo Invertido", invested_display)
 
         with col2:
             st.metric(
@@ -382,7 +381,7 @@ with tab4:
             showlegend=True
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 # Botón de volver
 st.markdown("---")

@@ -171,7 +171,7 @@ with tab1:
             # BOTÓN ENVÍO
             submit = st.form_submit_button(
                 label="✅ Crear Meta",
-                use_container_width=True,
+                width='stretch',
                 type="primary"
             )
 
@@ -391,7 +391,7 @@ with tab2:
                     if st.button(
                         "✏️ Editar",
                         key=f"edit_{habit['id']}",
-                        use_container_width=True
+                        width='stretch'
                     ):
                         st.session_state[f"editing_{habit['id']}"] = True
 
@@ -400,7 +400,7 @@ with tab2:
                         if st.button(
                             "⏸️ Pausar",
                             key=f"pause_{habit['id']}",
-                            use_container_width=True
+                            width='stretch'
                         ):
                             if db.update_habit(habit["id"], {"is_active": False}):
                                 st.success("✅ Hábito pausado")
@@ -410,7 +410,7 @@ with tab2:
                         if st.button(
                             "▶️ Activar",
                             key=f"activate_{habit['id']}",
-                            use_container_width=True
+                            width='stretch'
                         ):
                             if db.update_habit(habit["id"], {"is_active": True}):
                                 st.success("✅ Hábito activado")
@@ -421,7 +421,7 @@ with tab2:
                     if st.button(
                         "🗑️ Eliminar",
                         key=f"delete_{habit['id']}",
-                        use_container_width=True,
+                        width='stretch',
                         type="secondary"
                     ):
                         st.session_state[f"confirm_delete_{habit['id']}"] = True
@@ -488,7 +488,7 @@ with tab2:
                         with col_save:
                             submit_edit = st.form_submit_button(
                                 "💾 Guardar Cambios",
-                                use_container_width=True
+                                width='stretch'
                             )
 
                         if submit_edit:

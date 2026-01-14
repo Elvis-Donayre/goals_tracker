@@ -5,6 +5,7 @@ GESTIÓN DE ACTIVIDADES Y VINCULACIÓN
 """
 
 import streamlit as st
+import pandas as pd
 import time
 from utils.database import SupabaseDB
 from utils.helpers import format_duration
@@ -69,7 +70,7 @@ with tab1:
         # Botón
         submit = st.form_submit_button(
             "✅ Crear Actividad",
-            use_container_width=True,
+            width='stretch',
             type="primary"
         )
 
@@ -195,7 +196,7 @@ with tab2:
             # Botón guardar
             submit = st.form_submit_button(
                 "💾 Guardar Vínculos",
-                use_container_width=True,
+                width='stretch',
                 type="primary"
             )
 
@@ -275,10 +276,12 @@ with tab3:
 
                             with metric_cols[2]:
                                 total_min = stats.get("total_minutes", 0)
-                                st.metric(
-                                    "Tiempo total",
-                                    format_duration(int(total_min)) if total_min else "0m"
-                                )
+                                # Validar que no sea NaN y sea un número válido
+                                if pd.notna(total_min) and total_min > 0:
+                                    display_time = format_duration(int(total_min))
+                                else:
+                                    display_time = "0m"
+                                st.metric("Tiempo total", display_time)
 
                             # Mostrar hábitos beneficiados
                             if stats.get("benefited_habits"):
@@ -293,7 +296,7 @@ with tab3:
                     if st.button(
                         "✏️ Editar",
                         key=f"edit_act_{activity['id']}",
-                        use_container_width=True
+                        width='stretch'
                     ):
                         st.session_state[f"editing_act_{activity['id']}"] = True
 
@@ -301,7 +304,7 @@ with tab3:
                     if st.button(
                         "🗑️ Eliminar",
                         key=f"delete_act_{activity['id']}",
-                        use_container_width=True
+                        width='stretch'
                     ):
                         if st.session_state.get(f"confirm_delete_act_{activity['id']}", False):
                             if db.delete_activity(activity['id']):

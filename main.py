@@ -128,7 +128,7 @@ def login_page():
             with col1:
                 submit = st.form_submit_button(
                     "🔓 Iniciar Sesión",
-                    use_container_width=True,
+                    width='stretch',
                     type="primary"
                 )
 
@@ -180,7 +180,7 @@ def login_page():
 
             submit = st.form_submit_button(
                 "🚀 Crear Cuenta",
-                use_container_width=True,
+                width='stretch',
                 type="primary"
             )
 
@@ -260,7 +260,7 @@ def main_app():
         st.markdown("---")
 
         # Botón de cerrar sesión
-        if st.button("🚪 Cerrar Sesión", use_container_width=True):
+        if st.button("🚪 Cerrar Sesión", width='stretch'):
             db.sign_out()
             st.session_state.authenticated = False
             st.session_state.user = None
@@ -381,7 +381,7 @@ def main_app():
                     "total_hours_goal", "completion_percentage",
                     "is_active"
                 ]],
-                use_container_width=True
+                width='stretch'
             )
 
     # TAB 3: SETUP
